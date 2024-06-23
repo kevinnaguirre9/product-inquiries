@@ -1,0 +1,80 @@
+version: '3.9'
+
+services:
+  backend:
+    container_name: product-inquiries-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dependency-base
+    ports:
+      - ${APP_FORWARD_PORT:-8080}:${PORT:-8080}
+    volumes:
+      - .:/app
+    networks:
+      - product-inquiries-network
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    expose:
+      - ${PORT:-8080}
+
+  database:
+    container_name: product-inquiries-database
+    image: postgres:16.1-alpine3.18
+    restart: unless-stopped
+    ports:
+      - ${DB_FORWARD_PORT:-5432}:5432
+    environment:
+      - POSTGRES_USER=${DB_USER:-"postgres"}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-"zenmonk"}
+      - POSTGRES_DB=${DB_DATABASE:-"survey_request_booking_db"}
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+    networks:
+      - product-inquiries-network
+  
+  pgadmin:
+    container_name: product-inquiries-pgadmin
+    image: dpage/pgadmin4
+    restart: unless-stopped
+    ports:
+      - ${PGADMIN_FORWARD_PORT:-8888}:80
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - product-inquiries-network
+  
+  rabbitmq:
+    container_name: product-inquiries-rabbitmq
+    image: 'rabbitmq:3.8-management-alpine'
+    restart: unless-stopped
+    ports:
+      - "${RABBITMQ_FORWARD_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_FORWARD_PORT:-15672}:15672"
+    environment: 
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-"guest"}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-"guest"}
+      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_VHOST:-"/"}
+    volumes:
+        - rabbitmq-data:/var/lib/rabbitmq
+        - rabbitmq-logs:/var/log/rabbitmq
+    networks:
+      - product-inquiries-network
+    
+networks:
+  product-inquiries-network:
+    driver: bridge
+
+volumes:
+  postgresql-data:
+    driver: local
+  pgadmin-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+  rabbitmq-logs:
+    driver: local
